@@ -9,7 +9,7 @@
 
 // [Dependencies - AsmJit]
 #include "../base/assembler.h"
-#include "../base/intutil.h"
+#include "../base/utils.h"
 #include "../base/vmem.h"
 
 // [Dependenceis - C]
@@ -75,7 +75,7 @@ Error Assembler::_grow(size_t n) {
   size_t after = getOffset() + n;
 
   // Overflow.
-  if (n > IntUtil::maxUInt<uintptr_t>() - capacity)
+  if (n > IntTraits<uintptr_t>::maxValue() - capacity)
     return setError(kErrorNoHeapMemory);
 
   // Grow is called when allocation is needed, so it shouldn't happen, but on
@@ -241,7 +241,7 @@ Error Assembler::bind(const Label& label) {
       }
       else {
         ASMJIT_ASSERT(size == 1);
-        if (IntUtil::isInt8(patchedValue))
+        if (Utils::isInt8(patchedValue))
           setByteAt(offset, static_cast<uint8_t>(patchedValue & 0xFF));
         else
           error = kErrorIllegalDisplacement;

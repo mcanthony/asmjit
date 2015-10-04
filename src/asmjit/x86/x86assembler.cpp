@@ -12,10 +12,10 @@
 #if defined(ASMJIT_BUILD_X86) || defined(ASMJIT_BUILD_X64)
 
 // [Dependencies - AsmJit]
-#include "../base/intutil.h"
 #include "../base/logger.h"
 #include "../base/runtime.h"
 #include "../base/string.h"
+#include "../base/utils.h"
 #include "../base/vmem.h"
 #include "../x86/x86assembler.h"
 #include "../x86/x86cpuinfo.h"
@@ -155,7 +155,7 @@ static ASMJIT_INLINE bool x86RexIsInvalid(uint32_t rex) {
 
 //! Encode ModR/M.
 static ASMJIT_INLINE uint32_t x86EncodeMod(uint32_t m, uint32_t o, uint32_t rm) {
-  ASMJIT_ASSERT(m <= 7);
+  ASMJIT_ASSERT(m <= 3);
   ASMJIT_ASSERT(o <= 7);
   ASMJIT_ASSERT(rm <= 7);
   return (m << 6) + (o << 3) + rm;
@@ -163,7 +163,7 @@ static ASMJIT_INLINE uint32_t x86EncodeMod(uint32_t m, uint32_t o, uint32_t rm) 
 
 //! Encode SIB.
 static ASMJIT_INLINE uint32_t x86EncodeSib(uint32_t s, uint32_t i, uint32_t b) {
-  ASMJIT_ASSERT(s <= 7);
+  ASMJIT_ASSERT(s <= 3);
   ASMJIT_ASSERT(i <= 7);
   ASMJIT_ASSERT(b <= 7);
   return (s << 6) + (i << 3) + b;
@@ -173,7 +173,7 @@ static ASMJIT_INLINE uint32_t x86EncodeSib(uint32_t s, uint32_t i, uint32_t b) {
 //! displacement, which fits into a signed 32-bit integer.
 static ASMJIT_INLINE bool x64IsRelative(Ptr a, Ptr b) {
   SignedPtr diff = static_cast<SignedPtr>(a) - static_cast<SignedPtr>(b);
-  return IntUtil::isInt32(diff);
+  return Utils::isInt32(diff);
 }
 
 //! Cast `reg` to `X86Reg` and get the register index.
@@ -422,10 +422,10 @@ Error X86Assembler::align(uint32_t alignMode, uint32_t offset) {
       "%s.align %u\n", _logger->getIndentation(), static_cast<unsigned int>(offset));
 #endif // !ASMJIT_DISABLE_LOGGER
 
-  if (offset <= 1 || !IntUtil::isPowerOf2(offset) || offset > 64)
+  if (offset <= 1 || !Utils::isPowerOf2(offset) || offset > 64)
     return setError(kErrorInvalidArgument);
 
-  uint32_t i = static_cast<uint32_t>(IntUtil::deltaTo<size_t>(getOffset(), offset));
+  uint32_t i = static_cast<uint32_t>(Utils::alignDiff<size_t>(getOffset(), offset));
   if (i == 0)
     return kErrorOk;
 
@@ -438,20 +438,8 @@ Error X86Assembler::align(uint32_t alignMode, uint32_t offset) {
   if (alignMode == kAlignCode) {
     alignPattern = 0x90;
 
+    // Intel 64 and IA-32 Architectures Software Developer's Manual - Volume 2B (NOP).
     if (hasFeature(kCodeGenOptimizedAlign)) {
-      const X86CpuInfo* cpuInfo = static_cast<const X86CpuInfo*>(getRuntime()->getCpuInfo());
-
-      // NOPs optimized for Intel:
-      //   Intel 64 and IA-32 Architectures Software Developer's Manual
-      //   - Volume 2B
-      //   - Instruction Set Reference N-Z
-      //     - NOP
-
-      // NOPs optimized for AMD:
-      //   Software Optimization Guide for AMD Family 10h Processors (Quad-Core)
-      //   - 4.13 - Code Padding with Operand-Size Override and Multibyte NOP
-
-      // Intel and AMD.
       static const uint8_t nop1[] = { 0x90 };
       static const uint8_t nop2[] = { 0x66, 0x90 };
       static const uint8_t nop3[] = { 0x0F, 0x1F, 0x00 };
@@ -462,57 +450,27 @@ Error X86Assembler::align(uint32_t alignMode, uint32_t offset) {
       static const uint8_t nop8[] = { 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 };
       static const uint8_t nop9[] = { 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-      // AMD.
-      static const uint8_t nop10[] = { 0x66, 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 };
-      static const uint8_t nop11[] = { 0x66, 0x66, 0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00 };
+      do {
+        const uint8_t* p;
+        uint32_t n;
 
-      const uint8_t* p;
-      uint32_t n;
+        switch (i) {
+          case  1: p = nop1; n = 1; break;
+          case  2: p = nop2; n = 2; break;
+          case  3: p = nop3; n = 3; break;
+          case  4: p = nop4; n = 4; break;
+          case  5: p = nop5; n = 5; break;
+          case  6: p = nop6; n = 6; break;
+          case  7: p = nop7; n = 7; break;
+          case  8: p = nop8; n = 8; break;
+          default: p = nop9; n = 9; break;
+        }
 
-      if (cpuInfo->getVendorId() == kCpuVendorIntel && (
-          (cpuInfo->getFamily() & 0x0F) == 0x06 ||
-          (cpuInfo->getFamily() & 0x0F) == 0x0F)) {
+        i -= n;
         do {
-          switch (i) {
-            case  1: p = nop1; n = 1; break;
-            case  2: p = nop2; n = 2; break;
-            case  3: p = nop3; n = 3; break;
-            case  4: p = nop4; n = 4; break;
-            case  5: p = nop5; n = 5; break;
-            case  6: p = nop6; n = 6; break;
-            case  7: p = nop7; n = 7; break;
-            case  8: p = nop8; n = 8; break;
-            default: p = nop9; n = 9; break;
-          }
-
-          i -= n;
-          do {
-            EMIT_BYTE(*p++);
-          } while (--n);
-        } while (i);
-      }
-      else if (cpuInfo->getVendorId() == kCpuVendorAmd && cpuInfo->getFamily() >= 0x0F) {
-        do {
-          switch (i) {
-            case  1: p = nop1 ; n =  1; break;
-            case  2: p = nop2 ; n =  2; break;
-            case  3: p = nop3 ; n =  3; break;
-            case  4: p = nop4 ; n =  4; break;
-            case  5: p = nop5 ; n =  5; break;
-            case  6: p = nop6 ; n =  6; break;
-            case  7: p = nop7 ; n =  7; break;
-            case  8: p = nop8 ; n =  8; break;
-            case  9: p = nop9 ; n =  9; break;
-            case 10: p = nop10; n = 10; break;
-            default: p = nop11; n = 11; break;
-          }
-
-          i -= n;
-          do {
-            EMIT_BYTE(*p++);
-          } while (--n);
-        } while (i);
-      }
+          EMIT_BYTE(*p++);
+        } while (--n);
+      } while (i);
     }
   }
 
@@ -578,7 +536,7 @@ size_t X86Assembler::_relocCode(void* _dst, Ptr baseAddress) const {
 
       case kRelocTrampoline:
         ptr -= baseAddress + rd.from + 4;
-        if (!IntUtil::isInt32(static_cast<SignedPtr>(ptr))) {
+        if (!Utils::isInt32(static_cast<SignedPtr>(ptr))) {
           ptr = (Ptr)tramp - (baseAddress + rd.from + 4);
           useTrampoline = true;
         }
@@ -954,9 +912,6 @@ static const Operand::VRegOp x86PatchedHiRegs[4] = {
 template<int Arch>
 static Error ASMJIT_CDECL X86Assembler_emit(Assembler* self_, uint32_t code, const Operand* o0, const Operand* o1, const Operand* o2, const Operand* o3) {
   X86Assembler* self = static_cast<X86Assembler*>(self_);
-
-  uint8_t* cursor = self->getCursor();
-  uint32_t encoded = o0->getOp() + (o1->getOp() << 3) + (o2->getOp() << 6);
   uint32_t options = self->getInstOptionsAndReset();
 
   // Invalid instruction.
@@ -964,6 +919,23 @@ static Error ASMJIT_CDECL X86Assembler_emit(Assembler* self_, uint32_t code, con
     self->_comment = NULL;
     return self->setError(kErrorUnknownInst);
   }
+
+  // --------------------------------------------------------------------------
+  // [Grow]
+  // --------------------------------------------------------------------------
+
+  // Grow request happens rarely.
+  uint8_t* cursor = self->getCursor();
+  if (ASMJIT_UNLIKELY((size_t)(self->_end - cursor) < 16)) {
+    ASMJIT_PROPAGATE_ERROR(self->_grow(16));
+    cursor = self->getCursor();
+  }
+
+  // --------------------------------------------------------------------------
+  // [Prepare]
+  // --------------------------------------------------------------------------
+
+  uint32_t encoded = o0->getOp() + (o1->getOp() << 3) + (o2->getOp() << 6);
 
   // Instruction opcode.
   uint32_t opCode;
@@ -1005,16 +977,6 @@ static Error ASMJIT_CDECL X86Assembler_emit(Assembler* self_, uint32_t code, con
   const X86InstInfo& info = _x86InstInfo[code];
   const X86InstExtendedInfo& extendedInfo = info.getExtendedInfo();
 
-  // Grow request happens rarely. C++ compiler generates better code if it is
-  // handled at the end of the function.
-  if ((size_t)(self->_end - cursor) < 16)
-    goto _GrowBuffer;
-
-  // --------------------------------------------------------------------------
-  // [Prepare]
-  // --------------------------------------------------------------------------
-
-_Prepare:
   opCode = info.getPrimaryOpCode();
   opReg = x86ExtractO(opCode);
 
@@ -1196,7 +1158,7 @@ _Prepare:
 
       if (encoded == ENC_OPS(Reg, Imm, None)) {
         imVal = static_cast<const Imm*>(o1)->getInt64();
-        imLen = IntUtil::isInt8(imVal) ? static_cast<uint32_t>(1) : IntUtil::iMin<uint32_t>(o0->getSize(), 4);
+        imLen = Utils::isInt8(imVal) ? static_cast<uint32_t>(1) : Utils::iMin<uint32_t>(o0->getSize(), 4);
         rmReg = x86OpReg(o0);
 
         ADD_66H_P_BY_SIZE(o0->getSize());
@@ -1206,7 +1168,7 @@ _Prepare:
         if (rmReg == 0 && (o0->getSize() == 1 || imLen != 1)) {
           opCode &= kX86InstOpCode_PP_66 | kX86InstOpCode_W;
           opCode |= ((opReg << 3) | (0x04 + (o0->getSize() != 1)));
-          imLen = IntUtil::iMin<uint32_t>(o0->getSize(), 4);
+          imLen = Utils::iMin<uint32_t>(o0->getSize(), 4);
           goto _EmitX86Op;
         }
 
@@ -1221,7 +1183,7 @@ _Prepare:
           goto _IllegalInst;
 
         imVal = static_cast<const Imm*>(o1)->getInt64();
-        imLen = IntUtil::isInt8(imVal) ? static_cast<uint32_t>(1) : IntUtil::iMin<uint32_t>(memSize, 4);
+        imLen = Utils::isInt8(imVal) ? static_cast<uint32_t>(1) : Utils::iMin<uint32_t>(memSize, 4);
 
         opCode += memSize != 1 ? (imLen != 1 ? 1 : 3) : 0;
         ADD_66H_P_BY_SIZE(memSize);
@@ -1388,7 +1350,7 @@ _Prepare:
         imVal = static_cast<const Imm*>(o1)->getInt64();
         imLen = 1;
 
-        if (!IntUtil::isInt8(imVal)) {
+        if (!Utils::isInt8(imVal)) {
           opCode -= 2;
           imLen = o0->getSize() == 2 ? 2 : 4;
         }
@@ -1404,7 +1366,7 @@ _Prepare:
         imVal = static_cast<const Imm*>(o2)->getInt64();
         imLen = 1;
 
-        if (!IntUtil::isInt8(imVal)) {
+        if (!Utils::isInt8(imVal)) {
           opCode -= 2;
           imLen = o0->getSize() == 2 ? 2 : 4;
         }
@@ -1420,7 +1382,7 @@ _Prepare:
         imVal = static_cast<const Imm*>(o2)->getInt64();
         imLen = 1;
 
-        if (!IntUtil::isInt8(imVal)) {
+        if (!Utils::isInt8(imVal)) {
           opCode -= 2;
           imLen = o0->getSize() == 2 ? 2 : 4;
         }
@@ -1492,7 +1454,7 @@ _Prepare:
           intptr_t offs = label->offset - (intptr_t)(cursor - self->_buffer);
           ASMJIT_ASSERT(offs <= 0);
 
-          if ((options & kInstOptionLongForm) == 0 && IntUtil::isInt8(offs - kRel8Size)) {
+          if ((options & kInstOptionLongForm) == 0 && Utils::isInt8(offs - kRel8Size)) {
             EMIT_OP(opCode);
             EMIT_BYTE(offs - kRel8Size);
 
@@ -1544,7 +1506,7 @@ _Prepare:
         if (label->offset != -1) {
           // Bound label.
           intptr_t offs = label->offset - (intptr_t)(cursor - self->_buffer) - 1;
-          if (!IntUtil::isInt8(offs))
+          if (!Utils::isInt8(offs))
             goto _IllegalInst;
 
           EMIT_BYTE(offs);
@@ -1588,7 +1550,7 @@ _Prepare:
 
           intptr_t offs = label->offset - (intptr_t)(cursor - self->_buffer);
 
-          if ((options & kInstOptionLongForm) == 0 && IntUtil::isInt8(offs - kRel8Size)) {
+          if ((options & kInstOptionLongForm) == 0 && Utils::isInt8(offs - kRel8Size)) {
             options |= kInstOptionShortForm;
 
             EMIT_BYTE(0xEB);
@@ -1746,7 +1708,7 @@ _Prepare:
         rmReg = x86OpReg(o0);
 
         // Optimize instruction size by using 32-bit immediate if possible.
-        if (Arch == kArchX64 && imLen == 8 && IntUtil::isInt32(imVal)) {
+        if (Arch == kArchX64 && imLen == 8 && Utils::isInt32(imVal)) {
           opCode = 0xC7;
           ADD_REX_W(1);
           imLen = 4;
@@ -1768,7 +1730,7 @@ _Prepare:
           goto _IllegalInst;
 
         imVal = static_cast<const Imm*>(o1)->getInt64();
-        imLen = IntUtil::iMin<uint32_t>(memSize, 4);
+        imLen = Utils::iMin<uint32_t>(memSize, 4);
 
         opCode = 0xC6 + (memSize != 1);
         opReg = 0;
@@ -1868,7 +1830,7 @@ _Prepare:
 
       if (encoded == ENC_OPS(Imm, None, None)) {
         imVal = static_cast<const Imm*>(o0)->getInt64();
-        imLen = IntUtil::isInt8(imVal) ? 1 : 4;
+        imLen = Utils::isInt8(imVal) ? 1 : 4;
 
         EMIT_BYTE(imLen == 1 ? 0x6A : 0x68);
         goto _EmitImm;
@@ -2073,7 +2035,7 @@ _GroupPop_Gp:
 
       if (encoded == ENC_OPS(Reg, Imm, None)) {
         imVal = static_cast<const Imm*>(o1)->getInt64();
-        imLen = IntUtil::iMin<uint32_t>(o0->getSize(), 4);
+        imLen = Utils::iMin<uint32_t>(o0->getSize(), 4);
 
         ADD_66H_P_BY_SIZE(o0->getSize());
         ADD_REX_W_BY_SIZE(o0->getSize());
@@ -2094,7 +2056,7 @@ _GroupPop_Gp:
           goto _IllegalInst;
 
         imVal = static_cast<const Imm*>(o1)->getInt64();
-        imLen = IntUtil::iMin<uint32_t>(o0->getSize(), 4);
+        imLen = Utils::iMin<uint32_t>(o0->getSize(), 4);
 
         ADD_66H_P_BY_SIZE(o0->getSize());
         ADD_REX_W_BY_SIZE(o0->getSize());
@@ -2114,7 +2076,7 @@ _GroupPop_Gp:
         rmMem = x86OpMem(o1);
         goto _EmitX86M;
       }
-      // ... fall through ...
+      // ... Fall through ...
 
     case kX86InstEncodingIdX86Xadd:
       if (encoded == ENC_OPS(Reg, Reg, None)) {
@@ -3657,7 +3619,7 @@ _EmitSib:
           EMIT_BYTE(x86EncodeMod(0, opReg, 4));
           EMIT_BYTE(x86EncodeSib(0, 4, 4));
         }
-        else if (IntUtil::isInt8(dispOffset)) {
+        else if (Utils::isInt8(dispOffset)) {
           // [Esp/Rsp/R12 + Disp8].
           EMIT_BYTE(x86EncodeMod(1, opReg, 4));
           EMIT_BYTE(x86EncodeSib(0, 4, 4));
@@ -3674,7 +3636,7 @@ _EmitSib:
         // [Base].
         EMIT_BYTE(x86EncodeMod(0, opReg, mBase));
       }
-      else if (IntUtil::isInt8(dispOffset)) {
+      else if (Utils::isInt8(dispOffset)) {
         // [Base + Disp8].
         EMIT_BYTE(x86EncodeMod(1, opReg, mBase));
         EMIT_BYTE(static_cast<int8_t>(dispOffset));
@@ -3697,7 +3659,7 @@ _EmitSib:
         EMIT_BYTE(x86EncodeMod(0, opReg, 4));
         EMIT_BYTE(x86EncodeSib(shift, mIndex, mBase));
       }
-      else if (IntUtil::isInt8(dispOffset)) {
+      else if (Utils::isInt8(dispOffset)) {
         // [Base + Index * Scale + Disp8].
         EMIT_BYTE(x86EncodeMod(1, opReg, 4));
         EMIT_BYTE(x86EncodeSib(shift, mIndex, mBase));
@@ -3996,7 +3958,7 @@ _EmitAvxV:
       EMIT_BYTE(x86EncodeMod(0, opReg, 4));
       EMIT_BYTE(x86EncodeSib(shift, mIndex, mBase));
     }
-    else if (IntUtil::isInt8(dispOffset)) {
+    else if (Utils::isInt8(dispOffset)) {
       // [Base + Index * Scale + Disp8].
       EMIT_BYTE(x86EncodeMod(1, opReg, 4));
       EMIT_BYTE(x86EncodeSib(shift, mIndex, mBase));
@@ -4249,7 +4211,7 @@ _EmitDone:
 # if defined(ASMJIT_DEBUG)
     // Raise an assertion failure, because this situation shouldn't happen.
     if (assertIllegal)
-      assertionFailed(sb.getData(), __FILE__, __LINE__);
+      DebugUtil::assertionFailed(__FILE__, __LINE__, sb.getData());
 # endif // ASMJIT_DEBUG
   }
 #else
@@ -4262,12 +4224,6 @@ _EmitDone:
   self->setCursor(cursor);
 
   return kErrorOk;
-
-_GrowBuffer:
-  ASMJIT_PROPAGATE_ERROR(self->_grow(16));
-
-  cursor = self->getCursor();
-  goto _Prepare;
 }
 
 Error X86Assembler::_emit(uint32_t code, const Operand& o0, const Operand& o1, const Operand& o2, const Operand& o3) {

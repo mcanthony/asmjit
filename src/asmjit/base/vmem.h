@@ -10,7 +10,7 @@
 
 // [Dependencies - AsmJit]
 #include "../base/error.h"
-#include "../base/lock.h"
+#include "../base/utils.h"
 
 // [Api-Begin]
 #include "../apibegin.h"
@@ -72,21 +72,14 @@ struct VMemUtil {
   //! executable unless 'canExecute' is true. Returns the address of
   //! allocated memory, or NULL on failure.
   static ASMJIT_API void* alloc(size_t length, size_t* allocated, uint32_t flags);
-
-#if defined(ASMJIT_OS_WINDOWS)
-  //! Allocate virtual memory of `hProcess`.
-  //!
-  //! \note This function is Windows specific.
-  static ASMJIT_API void* allocProcessMemory(HANDLE hProcess, size_t length, size_t* allocated, uint32_t flags);
-#endif // ASMJIT_OS_WINDOWS
-
   //! Free memory allocated by `alloc()`.
   static ASMJIT_API Error release(void* addr, size_t length);
 
-#if defined(ASMJIT_OS_WINDOWS)
-  //! Release virtual memory of `hProcess`.
-  //!
-  //! \note This function is Windows specific.
+#if ASMJIT_OS_WINDOWS
+  //! Allocate virtual memory of `hProcess` (Windows only).
+  static ASMJIT_API void* allocProcessMemory(HANDLE hProcess, size_t length, size_t* allocated, uint32_t flags);
+
+  //! Release virtual memory of `hProcess` (Windows only).
   static ASMJIT_API Error releaseProcessMemory(HANDLE hProcess, void* addr, size_t length);
 #endif // ASMJIT_OS_WINDOWS
 };
@@ -102,7 +95,7 @@ struct VMemMgr {
   // [Construction / Destruction]
   // --------------------------------------------------------------------------
 
-#if !defined(ASMJIT_OS_WINDOWS)
+#if !ASMJIT_OS_WINDOWS
   //! Create a `VMemMgr` instance.
   ASMJIT_API VMemMgr();
 #else
@@ -128,7 +121,7 @@ struct VMemMgr {
   // [Accessors]
   // --------------------------------------------------------------------------
 
-#if defined(ASMJIT_OS_WINDOWS)
+#if ASMJIT_OS_WINDOWS
   //! Get the handle of the process memory manager is bound to.
   ASMJIT_INLINE HANDLE getProcessHandle() const {
     return _hProcess;
@@ -189,7 +182,7 @@ struct VMemMgr {
   // [Members]
   // --------------------------------------------------------------------------
 
-#if defined(ASMJIT_OS_WINDOWS)
+#if ASMJIT_OS_WINDOWS
   //! Process passed to `VirtualAllocEx` and `VirtualFree`.
   HANDLE _hProcess;
 #endif // ASMJIT_OS_WINDOWS

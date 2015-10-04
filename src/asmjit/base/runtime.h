@@ -42,7 +42,7 @@ ASMJIT_ENUM(RuntimeType) {
 // ============================================================================
 
 //! Base runtime.
-struct ASMJIT_VCLASS Runtime {
+struct ASMJIT_VIRTAPI Runtime {
   ASMJIT_NO_COPY(Runtime)
 
   // --------------------------------------------------------------------------
@@ -59,21 +59,12 @@ struct ASMJIT_VCLASS Runtime {
   // --------------------------------------------------------------------------
 
   //! Get runtime type.
-  ASMJIT_INLINE uint32_t getRuntimeType() const {
-    return _runtimeType;
-  }
+  ASMJIT_INLINE uint32_t getRuntimeType() const { return _runtimeType; }
 
   //! Get whether the runtime has a base address.
-  //!
-  //! \sa \ref getBaseAddress()
-  ASMJIT_INLINE bool hasBaseAddress() const {
-    return _baseAddress == kNoBaseAddress;
-  }
-
+  ASMJIT_INLINE bool hasBaseAddress() const { return _baseAddress != kNoBaseAddress; }
   //! Get the base address.
-  ASMJIT_INLINE Ptr getBaseAddress() const {
-    return _baseAddress;
-  }
+  ASMJIT_INLINE Ptr getBaseAddress() const { return _baseAddress; }
 
   // --------------------------------------------------------------------------
   // [Interface]
@@ -118,7 +109,7 @@ struct ASMJIT_VCLASS Runtime {
 // ============================================================================
 
 //! Base runtime for JIT code generation.
-struct ASMJIT_VCLASS HostRuntime : public Runtime {
+struct ASMJIT_VIRTAPI HostRuntime : public Runtime {
   ASMJIT_NO_COPY(HostRuntime)
 
   // --------------------------------------------------------------------------
@@ -159,7 +150,7 @@ struct ASMJIT_VCLASS HostRuntime : public Runtime {
 //!
 //! JIT static runtime can be used to generate code to a memory location that
 //! is known.
-struct ASMJIT_VCLASS StaticRuntime : public HostRuntime {
+struct ASMJIT_VIRTAPI StaticRuntime : public HostRuntime {
   ASMJIT_NO_COPY(StaticRuntime)
 
   // --------------------------------------------------------------------------
@@ -181,15 +172,12 @@ struct ASMJIT_VCLASS StaticRuntime : public HostRuntime {
   // --------------------------------------------------------------------------
 
   //! Get the base address.
-  ASMJIT_INLINE Ptr getBaseAddress() const {
-    return _baseAddress;
-  }
+  ASMJIT_INLINE Ptr getBaseAddress() const { return _baseAddress; }
 
-  //! Get the maximum size of the code that can be relocated to the target
-  //! address or zero if unlimited.
-  ASMJIT_INLINE size_t getSizeLimit() const {
-    return _sizeLimit;
-  }
+  //! Get the maximum size of the code that can be relocated/stored in the target.
+  //!
+  //! Returns zero if unlimited.
+  ASMJIT_INLINE size_t getSizeLimit() const { return _sizeLimit; }
 
   // --------------------------------------------------------------------------
   // [Interface]
@@ -204,7 +192,7 @@ struct ASMJIT_VCLASS StaticRuntime : public HostRuntime {
 // ============================================================================
 
 //! JIT runtime.
-struct ASMJIT_VCLASS JitRuntime : public HostRuntime {
+struct ASMJIT_VIRTAPI JitRuntime : public HostRuntime {
   ASMJIT_NO_COPY(JitRuntime)
 
   // --------------------------------------------------------------------------
@@ -221,19 +209,12 @@ struct ASMJIT_VCLASS JitRuntime : public HostRuntime {
   // --------------------------------------------------------------------------
 
   //! Get the type of allocation.
-  ASMJIT_INLINE uint32_t getAllocType() const {
-    return _allocType;
-  }
-
+  ASMJIT_INLINE uint32_t getAllocType() const { return _allocType; }
   //! Set the type of allocation.
-  ASMJIT_INLINE void setAllocType(uint32_t allocType) {
-    _allocType = allocType;
-  }
+  ASMJIT_INLINE void setAllocType(uint32_t allocType) { _allocType = allocType; }
 
   //! Get the virtual memory manager.
-  ASMJIT_INLINE VMemMgr* getMemMgr() const {
-    return const_cast<VMemMgr*>(&_memMgr);
-  }
+  ASMJIT_INLINE VMemMgr* getMemMgr() const { return const_cast<VMemMgr*>(&_memMgr); }
 
   // --------------------------------------------------------------------------
   // [Interface]

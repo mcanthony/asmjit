@@ -47,9 +47,9 @@ struct X86ScheduleData {
   uint16_t reserved;
 
   //! All instructions that this instruction depends on.
-  PodList<InstNode*>::Link* dependsOn;
+  PodList<ASInst*>::Link* dependsOn;
   //! All instructions that use the result of this instruction.
-  PodList<InstNode*>::Link* usedBy;
+  PodList<ASInst*>::Link* usedBy;
 };
 
 // ============================================================================
@@ -65,18 +65,18 @@ X86Scheduler::~X86Scheduler() {}
 // [asmjit::X86Scheduler - Run]
 // ============================================================================
 
-Error X86Scheduler::run(Node* start, Node* stop) {
+Error X86Scheduler::run(ASNode* start, ASNode* stop) {
   /*
   ASMJIT_TLOG("[Schedule] === Begin ===");
 
   Zone zone(8096 - kZoneOverhead);
-  Node* node_ = start;
+  ASNode* node_ = start;
 
   while (node_ != stop) {
-    Node* next = node_->getNext();
-    ASMJIT_ASSERT(node_->getType() == kNodeTypeInst);
+    ASNode* next = node_->getNext();
+    ASMJIT_ASSERT(node_->getType() == kASNodeTypeInst);
 
-    printf("  %s\n", X86Util::getInstInfo(static_cast<InstNode*>(node_)->getInstId()).getInstName());
+    printf("  %s\n", X86Util::getInstInfo(static_cast<ASInst*>(node_)->getInstId()).getInstName());
     node_ = next;
   }
 

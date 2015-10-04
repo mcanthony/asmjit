@@ -60,8 +60,8 @@ ASMJIT_ENUM(GlobalDefs) {
   //! Host memory allocator overhead.
   //!
   //! The overhead is decremented from all zone allocators so the operating
-  //! system doesn't have allocate extra virtual page to keep tract of the
-  //! requested memory block.
+  //! system doesn't have to allocate one extra virtual page to keep tract of
+  //! the requested memory block.
   //!
   //! The number is actually a guess.
   kMemAllocOverhead = sizeof(intptr_t) * 4,
@@ -82,25 +82,28 @@ ASMJIT_ENUM(ArchId) {
   //! No/Unknown architecture.
   kArchNone = 0,
 
-  //! X86 architecture.
+  //! X86 architecture (32-bit).
   kArchX86 = 1,
-  //! X64 architecture, also called AMD64.
+  //! X64 architecture (64-bit), also called AMD64.
   kArchX64 = 2,
 
-  //! Arm architecture.
+  //! X32 architecture (64-bit with 32-bit pointers) (NOT USED ATM).
+  kArchX32 = 3,
+
+  //! Arm architecture (32-bit).
   kArchArm = 4,
+  //! Arm64 architecture (64-bit).
+  kArchArm64 = 5,
 
-#if defined(ASMJIT_ARCH_X86)
+#if ASMJIT_ARCH_X86
   kArchHost = kArchX86,
-#endif // ASMJIT_ARCH_X86
-
-#if defined(ASMJIT_ARCH_X64)
+#elif ASMJIT_ARCH_X64
   kArchHost = kArchX64,
-#endif // ASMJIT_ARCH_X64
-
-#if defined(ASMJIT_ARCH_ARM)
+#elif ASMJIT_ARCH_ARM
   kArchHost = kArchArm,
-#endif // ASMJIT_ARCH_ARM
+#elif ASMJIT_ARCH_ARM64
+  kArchHost = kArchArm64,
+#endif
 
   //! Whether the host is 64-bit.
   kArchHost64Bit = sizeof(intptr_t) >= 8
@@ -124,31 +127,43 @@ static const _NoInit NoInit = {};
 // [asmjit::Assert]
 // ============================================================================
 
+namespace DebugUtil {
+
 //! \addtogroup asmjit_base_general
 //! \{
 
+//! Called in debug build to output a debugging message caused by assertion
+//! failure or tracing.
+ASMJIT_API void debugOutput(const char* str);
+
 //! Called in debug build on assertion failure.
 //!
-//! \param exp Expression that failed.
 //! \param file Source file name where it happened.
 //! \param line Line in the source file.
+//! \param msg Message to display.
 //!
 //! If you have problems with assertions put a breakpoint at assertionFailed()
 //! function (asmjit/base/globals.cpp) and check the call stack to locate the
 //! failing code.
-ASMJIT_API void assertionFailed(const char* exp, const char* file, int line);
+ASMJIT_API void assertionFailed(const char* file, int line, const char* msg);
 
 #if defined(ASMJIT_DEBUG)
-#define ASMJIT_ASSERT(_Exp_) \
+# define ASMJIT_ASSERT(exp) \
   do { \
-    if (!(_Exp_)) ::asmjit::assertionFailed(#_Exp_, __FILE__, __LINE__); \
+    if (!(exp)) { \
+      ::asmjit::DebugUtil::assertionFailed( \
+        __FILE__ + ::asmjit::DebugUtil::kSourceRelativePathOffset, \
+        __LINE__, \
+        #exp); \
+    } \
   } while (0)
 #else
-#define ASMJIT_ASSERT(_Exp_) ASMJIT_NOP()
+# define ASMJIT_ASSERT(exp) ASMJIT_NOP
 #endif // DEBUG
 
 //! \}
 
+} // DebugUtil namespace
 } // asmjit namespace
 
 // ============================================================================

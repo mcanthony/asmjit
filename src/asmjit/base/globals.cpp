@@ -16,11 +16,28 @@
 namespace asmjit {
 
 // ============================================================================
-// [asmjit::Assert]
+// [asmjit::DebugUtil]
 // ============================================================================
 
-void assertionFailed(const char* exp, const char* file, int line) {
-  ::fprintf(stderr, "Assertion failed: %s\n, file %s, line %d\n", exp, file, line);
+void DebugUtil::debugOutput(const char* str) {
+#if ASMJIT_OS_WINDOWS
+  ::OutputDebugStringA(str);
+#else
+  ::fputs(str, stderr);
+#endif
+}
+
+void DebugUtil::assertionFailed(const char* file, int line, const char* msg) {
+  char str[1024];
+
+  snprintf(str, 1024,
+    "[asmjit] Assertion failed at %s (line %d):\n"
+    "[asmjit] %s\n", file, line, msg);
+
+  // Support buggy `snprintf` implementations.
+  str[1023] = '\0';
+
+  debugOutput(str);
   ::abort();
 }
 

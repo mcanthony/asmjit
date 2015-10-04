@@ -21,6 +21,121 @@ namespace asmjit {
 //! \{
 
 // ============================================================================
+// [asmjit::BitArray]
+// ============================================================================
+
+//! Bit-array used by a variable-liveness analysis.
+struct BitArray {
+  // --------------------------------------------------------------------------
+  // [Enums]
+  // --------------------------------------------------------------------------
+
+  enum {
+    kEntitySize = static_cast<int>(sizeof(uintptr_t)),
+    kEntityBits = kEntitySize * 8
+  };
+
+  // --------------------------------------------------------------------------
+  // [Accessors]
+  // --------------------------------------------------------------------------
+
+  ASMJIT_INLINE uintptr_t getBit(uint32_t index) const {
+    return (data[index / kEntityBits] >> (index % kEntityBits)) & 1;
+  }
+
+  ASMJIT_INLINE void setBit(uint32_t index) {
+    data[index / kEntityBits] |= static_cast<uintptr_t>(1) << (index % kEntityBits);
+  }
+
+  ASMJIT_INLINE void delBit(uint32_t index) {
+    data[index / kEntityBits] &= ~(static_cast<uintptr_t>(1) << (index % kEntityBits));
+  }
+
+  // --------------------------------------------------------------------------
+  // [Interface]
+  // --------------------------------------------------------------------------
+
+  //! Copy bits from `s0`, returns `true` if at least one bit is set in `s0`.
+  ASMJIT_INLINE bool copyBits(const BitArray* s0, uint32_t len) {
+    uintptr_t r = 0;
+    for (uint32_t i = 0; i < len; i++) {
+      uintptr_t t = s0->data[i];
+      data[i] = t;
+      r |= t;
+    }
+    return r != 0;
+  }
+
+  ASMJIT_INLINE bool addBits(const BitArray* s0, uint32_t len) {
+    return addBits(this, s0, len);
+  }
+
+  ASMJIT_INLINE bool addBits(const BitArray* s0, const BitArray* s1, uint32_t len) {
+    uintptr_t r = 0;
+    for (uint32_t i = 0; i < len; i++) {
+      uintptr_t t = s0->data[i] | s1->data[i];
+      data[i] = t;
+      r |= t;
+    }
+    return r != 0;
+  }
+
+  ASMJIT_INLINE bool andBits(const BitArray* s1, uint32_t len) {
+    return andBits(this, s1, len);
+  }
+
+  ASMJIT_INLINE bool andBits(const BitArray* s0, const BitArray* s1, uint32_t len) {
+    uintptr_t r = 0;
+    for (uint32_t i = 0; i < len; i++) {
+      uintptr_t t = s0->data[i] & s1->data[i];
+      data[i] = t;
+      r |= t;
+    }
+    return r != 0;
+  }
+
+  ASMJIT_INLINE bool delBits(const BitArray* s1, uint32_t len) {
+    return delBits(this, s1, len);
+  }
+
+  ASMJIT_INLINE bool delBits(const BitArray* s0, const BitArray* s1, uint32_t len) {
+    uintptr_t r = 0;
+    for (uint32_t i = 0; i < len; i++) {
+      uintptr_t t = s0->data[i] & ~s1->data[i];
+      data[i] = t;
+      r |= t;
+    }
+    return r != 0;
+  }
+
+  ASMJIT_INLINE bool _addBitsDelSource(BitArray* s1, uint32_t len) {
+    return _addBitsDelSource(this, s1, len);
+  }
+
+  ASMJIT_INLINE bool _addBitsDelSource(const BitArray* s0, BitArray* s1, uint32_t len) {
+    uintptr_t r = 0;
+    for (uint32_t i = 0; i < len; i++) {
+      uintptr_t a = s0->data[i];
+      uintptr_t b = s1->data[i];
+
+      this->data[i] = a | b;
+      b &= ~a;
+
+      s1->data[i] = b;
+      r |= b;
+    }
+    return r != 0;
+  }
+
+  // --------------------------------------------------------------------------
+  // [Members]
+  // --------------------------------------------------------------------------
+
+  uintptr_t data[1];
+};
+
+
+// ============================================================================
 // [asmjit::PodVectorData]
 // ============================================================================
 
@@ -31,9 +146,7 @@ struct PodVectorData {
   // --------------------------------------------------------------------------
 
   //! Get data.
-  ASMJIT_INLINE void* getData() const {
-    return (void*)(this + 1);
-  }
+  ASMJIT_INLINE void* getData() const { return (void*)(this + 1); }
 
   // --------------------------------------------------------------------------
   // [Members]
@@ -58,13 +171,9 @@ struct PodVectorBase {
   // --------------------------------------------------------------------------
 
   //! Create a new instance of `PodVectorBase`.
-  ASMJIT_INLINE PodVectorBase() :
-    _d(const_cast<PodVectorData*>(&_nullData)) {}
-
+  ASMJIT_INLINE PodVectorBase() : _d(const_cast<PodVectorData*>(&_nullData)) {}
   //! Destroy the `PodVectorBase` and data.
-  ASMJIT_INLINE ~PodVectorBase() {
-    reset(true);
-  }
+  ASMJIT_INLINE ~PodVectorBase() { reset(true); }
 
   // --------------------------------------------------------------------------
   // [Reset]
@@ -121,43 +230,24 @@ struct PodVector : PodVectorBase {
   // --------------------------------------------------------------------------
 
   //! Get whether the vector is empty.
-  ASMJIT_INLINE bool isEmpty() const {
-    return _d->length == 0;
-  }
-
+  ASMJIT_INLINE bool isEmpty() const { return _d->length == 0; }
   //! Get length.
-  ASMJIT_INLINE size_t getLength() const {
-    return _d->length;
-  }
-
+  ASMJIT_INLINE size_t getLength() const { return _d->length; }
   //! Get capacity.
-  ASMJIT_INLINE size_t getCapacity() const {
-    return _d->capacity;
-  }
-
+  ASMJIT_INLINE size_t getCapacity() const { return _d->capacity; }
   //! Get data.
-  ASMJIT_INLINE T* getData() {
-    return static_cast<T*>(_d->getData());
-  }
-
+  ASMJIT_INLINE T* getData() { return static_cast<T*>(_d->getData()); }
   //! \overload
-  ASMJIT_INLINE const T* getData() const {
-    return static_cast<const T*>(_d->getData());
-  }
+  ASMJIT_INLINE const T* getData() const { return static_cast<const T*>(_d->getData()); }
 
   // --------------------------------------------------------------------------
   // [Grow / Reserve]
   // --------------------------------------------------------------------------
 
   //! Called to grow the buffer to fit at least `n` elements more.
-  ASMJIT_INLINE Error _grow(size_t n) {
-    return PodVectorBase::_grow(n, sizeof(T));
-  }
-
+  ASMJIT_INLINE Error _grow(size_t n) { return PodVectorBase::_grow(n, sizeof(T)); }
   //! Realloc internal array to fit at least `n` items.
-  ASMJIT_INLINE Error _reserve(size_t n) {
-    return PodVectorBase::_reserve(n, sizeof(T));
-  }
+  ASMJIT_INLINE Error _reserve(size_t n) { return PodVectorBase::_reserve(n, sizeof(T)); }
 
   // --------------------------------------------------------------------------
   // [Ops]

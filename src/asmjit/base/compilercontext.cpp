@@ -12,8 +12,8 @@
 #if !defined(ASMJIT_DISABLE_COMPILER)
 
 // [Dependencies - AsmJit]
-#include "../base/context_p.h"
-#include "../base/intutil.h"
+#include "../base/compilercontext_p.h"
+#include "../base/utils.h"
 
 // [Api-Begin]
 #include "../apibegin.h"
@@ -94,10 +94,10 @@ static ASMJIT_INLINE uint32_t BaseContext_getDefaultAlignment(uint32_t size) {
     return 1;
 }
 
-MemCell* Context::_newVarCell(VarData* vd) {
+VarCell* Context::_newVarCell(VarData* vd) {
   ASMJIT_ASSERT(vd->_memCell == NULL);
 
-  MemCell* cell;
+  VarCell* cell;
   uint32_t size = vd->getSize();
 
   if (vd->isStack()) {
@@ -107,7 +107,7 @@ MemCell* Context::_newVarCell(VarData* vd) {
       return NULL;
   }
   else {
-    cell = static_cast<MemCell*>(_baseZone.alloc(sizeof(MemCell)));
+    cell = static_cast<VarCell*>(_baseZone.alloc(sizeof(VarCell)));
     if (cell == NULL)
       goto _NoMemory;
 
@@ -118,7 +118,7 @@ MemCell* Context::_newVarCell(VarData* vd) {
     cell->_size = size;
     cell->_alignment = size;
 
-    _memMaxAlign = IntUtil::iMax<uint32_t>(_memMaxAlign, size);
+    _memMaxAlign = Utils::iMax<uint32_t>(_memMaxAlign, size);
     _memVarTotal += size;
 
     switch (size) {
@@ -141,8 +141,8 @@ _NoMemory:
   return NULL;
 }
 
-MemCell* Context::_newStackCell(uint32_t size, uint32_t alignment) {
-  MemCell* cell = static_cast<MemCell*>(_baseZone.alloc(sizeof(MemCell)));
+VarCell* Context::_newStackCell(uint32_t size, uint32_t alignment) {
+  VarCell* cell = static_cast<VarCell*>(_baseZone.alloc(sizeof(VarCell)));
   if (cell == NULL)
     goto _NoMemory;
 
@@ -152,13 +152,13 @@ MemCell* Context::_newStackCell(uint32_t size, uint32_t alignment) {
   if (alignment > 64)
     alignment = 64;
 
-  ASMJIT_ASSERT(IntUtil::isPowerOf2(alignment));
-  size = IntUtil::alignTo<uint32_t>(size, alignment);
+  ASMJIT_ASSERT(Utils::isPowerOf2(alignment));
+  size = Utils::alignTo<uint32_t>(size, alignment);
 
   // Insert it sorted according to the alignment and size.
   {
-    MemCell** pPrev = &_memStackCells;
-    MemCell* cur = *pPrev;
+    VarCell** pPrev = &_memStackCells;
+    VarCell* cur = *pPrev;
 
     for (cur = *pPrev; cur != NULL; cur = cur->_next) {
       if (cur->getAlignment() > alignment)
@@ -176,7 +176,7 @@ MemCell* Context::_newStackCell(uint32_t size, uint32_t alignment) {
     *pPrev = cell;
     _memStackCellsUsed++;
 
-    _memMaxAlign = IntUtil::iMax<uint32_t>(_memMaxAlign, alignment);
+    _memMaxAlign = Utils::iMax<uint32_t>(_memMaxAlign, alignment);
     _memStackTotal += size;
   }
 
@@ -188,8 +188,8 @@ _NoMemory:
 }
 
 Error Context::resolveCellOffsets() {
-  MemCell* varCell = _memVarCells;
-  MemCell* stackCell = _memStackCells;
+  VarCell* varCell = _memVarCells;
+  VarCell* stackCell = _memStackCells;
 
   uint32_t stackAlignment = 0;
   if (stackCell != NULL)
@@ -208,8 +208,9 @@ Error Context::resolveCellOffsets() {
   uint32_t gapAlignment = stackAlignment;
   uint32_t gapSize = 0;
 
+  // TODO: Not used!
   if (gapAlignment)
-    IntUtil::deltaTo(stackPos, gapAlignment);
+    Utils::alignDiff(stackPos, gapAlignment);
   stackPos += gapSize;
 
   uint32_t gapPos = stackPos;
@@ -273,14 +274,14 @@ Error Context::resolveCellOffsets() {
 Error Context::removeUnreachableCode() {
   Compiler* compiler = getCompiler();
 
-  PodList<Node*>::Link* link = _unreachableList.getFirst();
-  Node* stop = getStop();
+  PodList<ASNode*>::Link* link = _unreachableList.getFirst();
+  ASNode* stop = getStop();
 
   while (link != NULL) {
-    Node* node = link->getValue();
+    ASNode* node = link->getValue();
     if (node != NULL && node->getPrev() != NULL && node != stop) {
       // Locate all unreachable nodes.
-      Node* first = node;
+      ASNode* first = node;
       do {
         if (node->isFetched())
           break;
@@ -289,11 +290,11 @@ Error Context::removeUnreachableCode() {
 
       // Remove unreachable nodes that are neither informative nor directives.
       if (node != first) {
-        Node* end = node;
+        ASNode* end = node;
         node = first;
         do {
-          Node* next = node->getNext();
-          if (!node->isInformative() && node->getType() != kNodeTypeAlign) {
+          ASNode* next = node->getNext();
+          if (!node->isInformative() && node->getType() != kASNodeTypeAlign) {
             ASMJIT_TLOG("[%05d] Unreachable\n", node->getFlowId());
             compiler->removeNode(node);
           }
@@ -318,32 +319,32 @@ struct LivenessTarget {
   LivenessTarget* prev;
 
   //! Target node.
-  TargetNode* node;
+  ASLabel* node;
   //! Jumped from.
-  JumpNode* from;
+  ASJump* from;
 };
 
 Error Context::livenessAnalysis() {
   uint32_t bLen = static_cast<uint32_t>(
-    ((_contextVd.getLength() + VarBits::kEntityBits - 1) / VarBits::kEntityBits));
+    ((_contextVd.getLength() + BitArray::kEntityBits - 1) / BitArray::kEntityBits));
 
   // No variables.
   if (bLen == 0)
     return kErrorOk;
 
-  FuncNode* func = getFunc();
-  JumpNode* from = NULL;
+  ASFunc* func = getFunc();
+  ASJump* from = NULL;
 
   LivenessTarget* ltCur = NULL;
   LivenessTarget* ltUnused = NULL;
 
-  PodList<Node*>::Link* retPtr = _returningList.getFirst();
+  PodList<ASNode*>::Link* retPtr = _returningList.getFirst();
   ASMJIT_ASSERT(retPtr != NULL);
 
-  Node* node = retPtr->getValue();
+  ASNode* node = retPtr->getValue();
 
   size_t varMapToVaListOffset = _varMapToVaListOffset;
-  VarBits* bCur = newBits(bLen);
+  BitArray* bCur = newBits(bLen);
 
   if (bCur == NULL)
     goto _NoMemory;
@@ -358,7 +359,7 @@ _OnVisit:
         goto _OnDone;
     }
 
-    VarBits* bTmp = copyBits(bCur, bLen);
+    BitArray* bTmp = copyBits(bCur, bLen);
     if (bTmp == NULL)
       goto _NoMemory;
 
@@ -374,9 +375,9 @@ _OnVisit:
         VarData* vd = va->getVd();
 
         uint32_t flags = va->getFlags();
-        uint32_t ctxId = vd->getContextId();
+        uint32_t ctxId = vd->getLocalId();
 
-        if ((flags & kVarAttrOutAll) && !(flags & kVarAttrInAll)) {
+        if ((flags & kVarAttrWAll) && !(flags & kVarAttrRAll)) {
           // Write-Only.
           bTmp->setBit(ctxId);
           bCur->delBit(ctxId);
@@ -389,7 +390,7 @@ _OnVisit:
       }
     }
 
-    if (node->getType() == kNodeTypeTarget)
+    if (node->getType() == kASNodeTypeLabel)
       goto _OnTarget;
 
     if (node == func)
@@ -403,12 +404,12 @@ _OnVisit:
 _OnPatch:
   for (;;) {
     ASMJIT_ASSERT(node->hasLiveness());
-    VarBits* bNode = node->getLiveness();
+    BitArray* bNode = node->getLiveness();
 
     if (!bNode->_addBitsDelSource(bCur, bLen))
       goto _OnDone;
 
-    if (node->getType() == kNodeTypeTarget)
+    if (node->getType() == kASNodeTypeLabel)
       goto _OnTarget;
 
     if (node == func)
@@ -418,7 +419,7 @@ _OnPatch:
   }
 
 _OnTarget:
-  if (static_cast<TargetNode*>(node)->getNumRefs() != 0) {
+  if (static_cast<ASLabel*>(node)->getNumRefs() != 0) {
     // Push a new LivenessTarget onto the stack if needed.
     if (ltCur == NULL || ltCur->node != node) {
       // Allocate a new LivenessTarget object (from pool or zone).
@@ -429,7 +430,7 @@ _OnTarget:
       }
       else {
         ltTmp = _baseZone.allocT<LivenessTarget>(
-          sizeof(LivenessTarget) - sizeof(VarBits) + bLen * sizeof(uintptr_t));
+          sizeof(LivenessTarget) - sizeof(BitArray) + bLen * sizeof(uintptr_t));
 
         if (ltTmp == NULL)
           goto _NoMemory;
@@ -437,10 +438,10 @@ _OnTarget:
 
       // Initialize and make current - ltTmp->from will be set later on.
       ltTmp->prev = ltCur;
-      ltTmp->node = static_cast<TargetNode*>(node);
+      ltTmp->node = static_cast<ASLabel*>(node);
       ltCur = ltTmp;
 
-      from = static_cast<TargetNode*>(node)->getFrom();
+      from = static_cast<ASLabel*>(node)->getFrom();
       ASMJIT_ASSERT(from != NULL);
     }
     else {
@@ -530,7 +531,7 @@ void Context::cleanup() {
 
   for (size_t i = 0; i < length; i++) {
     VarData* vd = array[i];
-    vd->resetContextId();
+    vd->resetLocalId();
     vd->resetRegIndex();
   }
 
@@ -542,9 +543,9 @@ void Context::cleanup() {
 // [asmjit::Context - CompileFunc]
 // ============================================================================
 
-Error Context::compile(FuncNode* func) {
-  Node* end = func->getEnd();
-  Node* stop = end->getNext();
+Error Context::compile(ASFunc* func) {
+  ASNode* end = func->getEnd();
+  ASNode* stop = end->getNext();
 
   _func = func;
   _stop = stop;

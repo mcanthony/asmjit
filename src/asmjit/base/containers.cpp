@@ -9,7 +9,7 @@
 
 // [Dependencies - AsmJit]
 #include "../base/containers.h"
-#include "../base/intutil.h"
+#include "../base/utils.h"
 
 // [Api-Begin]
 #include "../apibegin.h"
@@ -53,7 +53,7 @@ Error PodVectorBase::_grow(size_t n, size_t sizeOfT) {
   size_t capacity = d->capacity;
   size_t after = d->length;
 
-  if (IntUtil::maxUInt<size_t>() - n < after)
+  if (IntTraits<size_t>::maxValue() - n < after)
     return kErrorNoHeapMemory;
 
   after += n;

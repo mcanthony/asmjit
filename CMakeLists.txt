@@ -160,8 +160,10 @@ Macro(AsmJit_AddSource in_dst in_path)
     Set(__cflags ${ASMJIT_CFLAGS})
 
     If(__name MATCHES "\\.cpp|\\.h")
-      If("${__cflags}")
-        Set_Source_Files_Properties(${__name} PROPERTIES COMPILE_FLAGS ${__cflags})
+      If(__name MATCHES "\\.cpp")
+        If("${__cflags}")
+          Set_Source_Files_Properties(${__file} PROPERTIES COMPILE_FLAGS ${__cflags})
+        EndIf()
       EndIf()
       List(APPEND __list ${__file})
     EndIf()
@@ -222,7 +224,6 @@ AsmJit_AddSource(ASMJIT_SRC asmjit
   asmjit.h
   base.h
   build.h
-  config.h
   host.h
   x86.h
 )
@@ -234,12 +235,13 @@ AsmJit_AddSource(ASMJIT_SRC asmjit/base
   codegen.h
   compiler.cpp
   compiler.h
+  compilercontext.cpp
+  compilercontext_p.h
+  compilerfunc.h
   constpool.cpp
   constpool.h
   containers.cpp
   containers.h
-  context.cpp
-  context_p.h
   cpuinfo.cpp
   cpuinfo.h
   cputicks.cpp
@@ -248,17 +250,18 @@ AsmJit_AddSource(ASMJIT_SRC asmjit/base
   error.h
   globals.cpp
   globals.h
-  intutil.cpp
-  intutil.h
-  lock.h
   logger.cpp
   logger.h
   operand.cpp
   operand.h
   runtime.cpp
   runtime.h
+  stream.cpp
+  stream.h
   string.cpp
   string.h
+  utils.cpp
+  utils.h
   vectypes.h
   vmem.cpp
   vmem.h
@@ -271,8 +274,10 @@ AsmJit_AddSource(ASMJIT_SRC asmjit/x86
   x86assembler.h
   x86compiler.cpp
   x86compiler.h
-  x86context.cpp
-  x86context_p.h
+  x86compilercontext.cpp
+  x86compilercontext_p.h
+  x86compilerfunc.cpp
+  x86compilerfunc.h
   x86cpuinfo.cpp
   x86cpuinfo.h
   x86inst.cpp

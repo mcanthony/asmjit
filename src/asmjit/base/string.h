@@ -9,7 +9,7 @@
 #define _ASMJIT_BASE_STRING_H
 
 // [Dependencies - AsmJit]
-#include "../base/globals.h"
+#include "../base/utils.h"
 
 // [Dependencies - C]
 #include <stdarg.h>
@@ -48,21 +48,6 @@ ASMJIT_ENUM(StringFormatFlags) {
   kStringFormatShowSpace = 0x00000002,
   kStringFormatAlternate = 0x00000004,
   kStringFormatSigned    = 0x80000000
-};
-
-// ============================================================================
-// [asmjit::StringUtil]
-// ============================================================================
-
-//! String utilities.
-struct StringUtil {
-  static ASMJIT_INLINE size_t nlen(const char* s, size_t maxlen) {
-    size_t i;
-    for (i = 0; i < maxlen; i++)
-      if (!s[i])
-        break;
-    return i;
-  }
 };
 
 // ============================================================================
@@ -302,9 +287,7 @@ struct StringBuilder {
   //! Check for equality with other `str` of `len`.
   ASMJIT_API bool eq(const char* str, size_t len = kInvalidIndex) const;
   //! Check for equality with `other`.
-  ASMJIT_INLINE bool eq(const StringBuilder& other) const {
-    return eq(other._data);
-  }
+  ASMJIT_INLINE bool eq(const StringBuilder& other) const { return eq(other._data); }
 
   // --------------------------------------------------------------------------
   // [Operator Overload]

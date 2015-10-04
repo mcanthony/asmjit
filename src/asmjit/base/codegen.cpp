@@ -9,7 +9,7 @@
 
 // [Dependencies - AsmJit]
 #include "../base/codegen.h"
-#include "../base/intutil.h"
+#include "../base/utils.h"
 
 // [Api-Begin]
 #include "../apibegin.h"
@@ -28,7 +28,7 @@ CodeGen::CodeGen(Runtime* runtime) :
   _arch(kArchNone),
   _regSize(0),
   _reserved(0),
-  _features(IntUtil::mask(kCodeGenOptimizedAlign)),
+  _features(Utils::mask(kCodeGenOptimizedAlign)),
   _instOptions(0),
   _error(kErrorOk),
   _baseZone(16384 - kZoneOverhead) {}
@@ -37,17 +37,6 @@ CodeGen::~CodeGen() {
   if (_errorHandler != NULL)
     _errorHandler->release();
 }
-
-// ============================================================================
-// [asmjit::CodeGen - Logging]
-// ============================================================================
-
-#if !defined(ASMJIT_DISABLE_LOGGER)
-Error CodeGen::setLogger(Logger* logger) {
-  _logger = logger;
-  return kErrorOk;
-}
-#endif // !ASMJIT_DISABLE_LOGGER
 
 // ============================================================================
 // [asmjit::CodeGen - Error]

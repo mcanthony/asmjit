@@ -799,7 +799,7 @@ asmjit::BaseVarInst|asmjit::x86x64::VarInst {
 ; [asmjit::X86 - Compiler - BaseNode]
 ; =============================================================================
 
-asmjit::BaseNode|asmjit::AlignNode|asmjit::EmbedNode|asmjit::CommentNode|asmjit::HintNode|asmjit::TargetNode|asmjit::InstNode|asmjit::JumpNode::asmjit::FuncNode|asmjit::EndNode|asmjit::RetNode|asmjit::x86x64::X86X64FuncNode|asmjit::x86x64::X86X64CallNode|asmjit::SArgNode {
+asmjit::BaseNode|asmjit::AlignNode|asmjit::EmbedNode|asmjit::CommentNode|asmjit::HintNode|asmjit::TargetNode|asmjit::InstNode|asmjit::JumpNode::asmjit::FuncNode|asmjit::EndNode|asmjit::RetNode|asmjit::x86x64::X86X64FuncNode|asmjit::x86x64::X86X64CallNode|asmjit::ASCallArg {
   preview(
     #(
       #if   ($e._type == asmjit::kNodeTypeAlign) ("AlignNode")
@@ -812,7 +812,7 @@ asmjit::BaseNode|asmjit::AlignNode|asmjit::EmbedNode|asmjit::CommentNode|asmjit:
       #elif ($e._type == asmjit::kNodeTypeEnd) ("EndNode")
       #elif ($e._type == asmjit::kNodeTypeRet) ("RetNode")
       #elif ($e._type == asmjit::kNodeTypeCall) ("CallNode")
-      #elif ($e._type == asmjit::kNodeTypeSArg) ("SArgNode")
+      #elif ($e._type == asmjit::kNodeTypeSArg) ("ASCallArg")
       #else ("BaseNode"),
 
       "(",

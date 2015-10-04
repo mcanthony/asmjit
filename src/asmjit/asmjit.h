@@ -130,7 +130,7 @@
 //! constructs compiler is using to represent functions and function calls. The
 //! node list can only be used together with \ref Compiler.
 //!
-//! TODO
+//! TODO:
 
 // ============================================================================
 // [asmjit_base_util]
@@ -169,13 +169,16 @@
 //! CPU Ticks is a simple helper that can be used to do basic benchmarks. See
 //! \ref CpuTicks class for more details.
 //!
-//! Integer Utilities
-//! -----------------
+//! Integer/String Utilities
+//! ------------------------
 //!
-//! Integer utilities are all implemented by a static class \ref IntUtil.
-//! There are utilities for bit manipulation and bit counting, utilities to get
-//! an integer minimum / maximum and various other helpers required to perform
-//! alignment checks and binary casting from float to integer and vica versa.
+//! Integer utilities are all implemented by a static class \ref Utils. There
+//! are utilities for bit manipulation and bit counting, utilities to get an
+//! integer minimum / maximum and various other helpers required to perform
+//! alignment checks and binary casting from float to integer and vice versa.
+//!
+//! String utilities are also implemented by a static class \ref Utils. They
+//! are mostly used by asmjit internals and not really important to consumers.
 //!
 //! Vector Utilities
 //! ----------------
@@ -333,7 +336,7 @@
 // [asmjit_x86_compiler]
 // ============================================================================
 
-//! \defgroup asmjit_x86_compiler X86/X64 Code-Tree
+//! \defgroup asmjit_x86_compiler X86/X64 Compiler
 //! \ingroup asmjit_x86
 //!
 //! \brief X86/X64 code-tree and helpers.

@@ -11,18 +11,18 @@
 #include "../base/cputicks.h"
 
 // [Dependencies - Posix]
-#if defined(ASMJIT_OS_POSIX)
+#if ASMJIT_OS_POSIX
 # include <time.h>
 # include <unistd.h>
 #endif // ASMJIT_OS_POSIX
 
 // [Dependencies - Mac]
-#if defined(ASMJIT_OS_MAC)
+#if ASMJIT_OS_MAC
 # include <mach/mach_time.h>
 #endif // ASMJIT_OS_MAC
 
 // [Dependencies - Windows]
-#if defined(ASMJIT_OS_WINDOWS)
+#if ASMJIT_OS_WINDOWS
 // `_InterlockedCompareExchange` is only available as intrinsic (MS Compiler).
 # if defined(_MSC_VER) && _MSC_VER >= 1400
 #  include <intrin.h>
@@ -41,7 +41,7 @@ namespace asmjit {
 // [asmjit::CpuTicks - Windows]
 // ============================================================================
 
-#if defined(ASMJIT_OS_WINDOWS)
+#if ASMJIT_OS_WINDOWS
 static volatile uint32_t CpuTicks_hiResOk;
 static volatile double CpuTicks_hiResFreq;
 
@@ -87,7 +87,7 @@ uint32_t CpuTicks::now() {
 // [asmjit::CpuTicks - Mac]
 // ============================================================================
 
-#elif defined(ASMJIT_OS_MAC)
+#elif ASMJIT_OS_MAC
 static mach_timebase_info_data_t CpuTicks_machTime;
 
 uint32_t CpuTicks::now() {
@@ -119,7 +119,7 @@ uint32_t CpuTicks::now() {
   uint64_t t = (uint64_t(ts.tv_sec ) * 1000) + (uint64_t(ts.tv_nsec) / 1000000);
   return static_cast<uint32_t>(t & 0xFFFFFFFFU);
 #else  // _POSIX_MONOTONIC_CLOCK
-#error "AsmJit - Unsupported OS."
+#error "[asmjit] Unsupported OS."
   return 0;
 #endif  // _POSIX_MONOTONIC_CLOCK
 }

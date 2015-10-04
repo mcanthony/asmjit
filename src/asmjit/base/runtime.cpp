@@ -55,21 +55,11 @@ const CpuInfo* HostRuntime::getCpuInfo() {
 uint32_t HostRuntime::getStackAlignment() {
   uint32_t alignment = sizeof(intptr_t);
 
-#if defined(ASMJIT_ARCH_X86)
   // Modern Linux, APPLE and UNIX guarantees 16-byte stack alignment, but I'm
   // not sure about all other UNIX operating systems, because 16-byte alignment
   // is addition to an older specification.
-# if (defined(__linux__)   || \
-      defined(__linux)     || \
-      defined(__unix__)    || \
-      defined(__FreeBSD__) || \
-      defined(__NetBSD__)  || \
-      defined(__OpenBSD__) || \
-      defined(__DARWIN__)  || \
-      defined(__APPLE__)   )
-  alignment = 16;
-# endif
-#elif defined(ASMJIT_ARCH_X64)
+#if (ASMJIT_ARCH_X64) || \
+    (ASMJIT_ARCH_X86 && (ASMJIT_OS_LINUX || ASMJIT_OS_BSD || ASMJIT_OS_MAC))
   alignment = 16;
 #endif
 
@@ -78,10 +68,10 @@ uint32_t HostRuntime::getStackAlignment() {
 
 void HostRuntime::flush(void* p, size_t size) {
   // Only useful on non-x86 architectures.
-#if !defined(ASMJIT_ARCH_X86) && !defined(ASMJIT_ARCH_X64)
+#if !ASMJIT_ARCH_X86 && !ASMJIT_ARCH_X64
 
   // Windows has built-in support in kernel32.dll.
-#if defined(ASMJIT_OS_WINDOWS)
+#if ASMJIT_OS_WINDOWS
   ::FlushInstructionCache(_memMgr.getProcessHandle(), p, size);
 #endif // ASMJIT_OS_WINDOWS
 

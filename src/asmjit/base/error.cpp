@@ -9,7 +9,7 @@
 
 // [Dependencies - AsmJit]
 #include "../base/error.h"
-#include "../base/intutil.h"
+#include "../base/utils.h"
 
 // [Api-Begin]
 #include "../apibegin.h"

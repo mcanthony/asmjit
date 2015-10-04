@@ -8,8 +8,8 @@
 #define ASMJIT_EXPORTS
 
 // [Dependencies - AsmJit]
-#include "../base/intutil.h"
 #include "../base/string.h"
+#include "../base/utils.h"
 
 // [Api-Begin]
 #include "../apibegin.h"
@@ -55,10 +55,10 @@ char* StringBuilder::prepare(uint32_t op, size_t len) {
     }
 
     if (_capacity < len) {
-      if (len >= IntUtil::maxUInt<size_t>() - sizeof(intptr_t) * 2)
+      if (len >= IntTraits<size_t>::maxValue() - sizeof(intptr_t) * 2)
         return NULL;
 
-      size_t to = IntUtil::alignTo<size_t>(len, sizeof(intptr_t));
+      size_t to = Utils::alignTo<size_t>(len, sizeof(intptr_t));
       if (to < 256 - sizeof(intptr_t))
         to = 256 - sizeof(intptr_t);
 
@@ -94,7 +94,7 @@ char* StringBuilder::prepare(uint32_t op, size_t len) {
       return _data + _length;
 
     // Overflow.
-    if (IntUtil::maxUInt<size_t>() - sizeof(intptr_t) * 2 - _length < len)
+    if (IntTraits<size_t>::maxValue() - sizeof(intptr_t) * 2 - _length < len)
       return NULL;
 
     size_t after = _length + len;
@@ -109,11 +109,11 @@ char* StringBuilder::prepare(uint32_t op, size_t len) {
 
       if (to < after) {
         to = after;
-        if (to < (IntUtil::maxUInt<size_t>() - 1024 * 32))
-          to = IntUtil::alignTo<size_t>(to, 1024 * 32);
+        if (to < (IntTraits<size_t>::maxValue() - 1024 * 32))
+          to = Utils::alignTo<size_t>(to, 1024 * 32);
       }
 
-      to = IntUtil::alignTo<size_t>(to, sizeof(intptr_t));
+      to = Utils::alignTo<size_t>(to, sizeof(intptr_t));
       char* newData = static_cast<char*>(ASMJIT_ALLOC(to + sizeof(intptr_t)));
 
       if (newData == NULL)
@@ -141,10 +141,10 @@ bool StringBuilder::reserve(size_t to) {
   if (_capacity >= to)
     return true;
 
-  if (to >= IntUtil::maxUInt<size_t>() - sizeof(intptr_t) * 2)
+  if (to >= IntTraits<size_t>::maxValue() - sizeof(intptr_t) * 2)
     return false;
 
-  to = IntUtil::alignTo<size_t>(to, sizeof(intptr_t));
+  to = Utils::alignTo<size_t>(to, sizeof(intptr_t));
 
   char* newData = static_cast<char*>(ASMJIT_ALLOC(to + sizeof(intptr_t)));
   if (newData == NULL)
@@ -296,7 +296,7 @@ bool StringBuilder::_opNumber(uint32_t op, uint64_t i, uint32_t base, size_t wid
 }
 
 bool StringBuilder::_opHex(uint32_t op, const void* data, size_t len) {
-  if (len >= IntUtil::maxUInt<size_t>() / 2)
+  if (len >= IntTraits<size_t>::maxValue() / 2)
     return false;
 
   char* dst = prepare(op, len * 2);

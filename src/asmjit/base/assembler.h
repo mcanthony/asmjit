@@ -44,9 +44,10 @@ ASMJIT_ENUM(InstOptions) {
   //! No instruction options.
   kInstOptionNone = 0x00000000,
 
-  //! Emit short form of the instruction.
+  //! Emit short form of the instruction (X86/X64 only).
   //!
-  //! X86/X64:
+  //! X86/X64 Specific
+  //! ----------------
   //!
   //! Short form is mostly related to jmp and jcc instructions, but can be used
   //! by other instructions supporting 8-bit or 32-bit immediates. This option
@@ -55,9 +56,10 @@ ASMJIT_ENUM(InstOptions) {
   //! assembler/compiler stream is unusable.
   kInstOptionShortForm = 0x00000001,
 
-  //! Emit long form of the instruction.
+  //! Emit long form of the instruction (X86/X64 only).
   //!
-  //! X86/X64:
+  //! X86/X64 Specific
+  //! ----------------
   //!
   //! Long form is mosrlt related to jmp and jcc instructions, but like the
   //! `kInstOptionShortForm` option it can be used by other instructions
@@ -90,7 +92,7 @@ struct LabelLink {
   intptr_t offset;
   //! Inlined displacement.
   intptr_t displacement;
-  //! RelocId if link must be absolute when relocated.
+  //! RelocId in case the link has to be absolute after relocated.
   intptr_t relocId;
 };
 
@@ -114,9 +116,10 @@ struct LabelData {
 
 //! \internal
 //!
-//! Code relocation data (relative vs absolute addresses).
+//! Code relocation data (relative vs. absolute addresses).
 //!
-//! X86/X64:
+//! X86/X64 Specific
+//! ----------------
 //!
 //! X86 architecture uses 32-bit absolute addressing model by memory operands,
 //! but 64-bit mode uses relative addressing model (RIP + displacement). In
@@ -145,7 +148,7 @@ struct RelocData {
 //! specific API is implemented by backends.
 //!
 //! \sa Compiler.
-struct ASMJIT_VCLASS Assembler : public CodeGen {
+struct ASMJIT_VIRTAPI Assembler : public CodeGen {
   ASMJIT_NO_COPY(Assembler)
 
   // --------------------------------------------------------------------------
@@ -398,7 +401,7 @@ struct ASMJIT_VCLASS Assembler : public CodeGen {
     return result;
   }
 
-  //! Bind label to the current offset.
+  //! Bind the `label` to the current offset.
   //!
   //! \note Label can be bound only once!
   ASMJIT_API virtual Error bind(const Label& label);
@@ -414,26 +417,25 @@ struct ASMJIT_VCLASS Assembler : public CodeGen {
   // [Align]
   // --------------------------------------------------------------------------
 
-  //! Align target buffer to `m` bytes.
+  //! Align target buffer to the `offset` specified.
   //!
-  //! Typical usage of this is to align labels at start of the inner loops.
-  //!
-  //! Inserts `nop()` instructions or CPU optimized NOPs.
-  virtual Error align(uint32_t mode, uint32_t offset) = 0;
+  //! The sequence that is used to fill the gap between the aligned location
+  //! and the current depends on `alignMode`, see \ref AlignMode.
+  virtual Error align(uint32_t alignMode, uint32_t offset) = 0;
 
   // --------------------------------------------------------------------------
   // [Reloc]
   // --------------------------------------------------------------------------
 
-  //! Relocate the code to `baseAddress` and copy to `dst`.
+  //! Relocate the code to `baseAddress` and copy it to `dst`.
   //!
   //! \param dst Contains the location where the relocated code should be
   //! copied. The pointer can be address returned by virtual memory allocator
   //! or any other address that has sufficient space.
   //!
-  //! \param base Base address used for relocation. The `JitRuntime` always
-  //! sets the `base` address to be the same as `dst`, but other runtimes, for
-  //! example `StaticRuntime`, do not have to follow this rule.
+  //! \param baseAddress Base address used for relocation. The `JitRuntime`
+  //! always sets the `baseAddress` address to be the same as `dst`, but other
+  //! runtimes, for example `StaticRuntime`, do not have to follow this rule.
   //!
   //! \retval The number bytes actually used. If the code generator reserved
   //! space for possible trampolines, but didn't use it, the number of bytes

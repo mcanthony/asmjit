@@ -118,7 +118,7 @@ typedef uint32_t Error;
 //! Please note that `addRef` and `release` functions are used, but there is
 //! no reference counting implemented by default, reimplement to change the
 //! default behavior.
-struct ASMJIT_VCLASS ErrorHandler {
+struct ASMJIT_VIRTAPI ErrorHandler {
   // --------------------------------------------------------------------------
   // [Construction / Destruction]
   // --------------------------------------------------------------------------
@@ -175,9 +175,9 @@ struct ASMJIT_VCLASS ErrorHandler {
   //! Finally, if no exceptions nor setjmp() / longjmp() mechanisms were used,
   //! you can still implement a compatible handling by returning from your
   //! error handler. Returning `true` means that error was reported and AsmJit
-  //! should continue execution, but `false` sets the rror immediately to the
-  //! `Assembler` or `Compiler` and execution shouldn't continue (this
-  //! is the default behavior in case no error handler is used).
+  //! should continue execution, but `false` sets the error immediately to the
+  //! `Assembler` or `Compiler` and execution shouldn't continue (this is the
+  //! default behavior in case no error handler is used).
   virtual bool handleError(Error code, const char* message) = 0;
 };
 

@@ -112,7 +112,7 @@ ASMJIT_ENUM(RelocMode) {
 // ============================================================================
 
 //! Abstract class defining basics of \ref Assembler and \ref Compiler.
-struct ASMJIT_VCLASS CodeGen {
+struct ASMJIT_VIRTAPI CodeGen {
   ASMJIT_NO_COPY(CodeGen)
 
   // --------------------------------------------------------------------------
@@ -128,10 +128,8 @@ struct ASMJIT_VCLASS CodeGen {
   // [Runtime]
   // --------------------------------------------------------------------------
 
-  //! Get runtime.
-  ASMJIT_INLINE Runtime* getRuntime() const {
-    return _runtime;
-  }
+  //! Get the runtime associated with the code generator.
+  ASMJIT_INLINE Runtime* getRuntime() const { return _runtime; }
 
   // --------------------------------------------------------------------------
   // [Logger]
@@ -139,88 +137,52 @@ struct ASMJIT_VCLASS CodeGen {
 
 #if !defined(ASMJIT_DISABLE_LOGGER)
   //! Get whether the code generator has a logger.
-  ASMJIT_INLINE bool hasLogger() const {
-    return _logger != NULL;
-  }
-
+  ASMJIT_INLINE bool hasLogger() const { return _logger != NULL; }
   //! Get logger.
-  ASMJIT_INLINE Logger* getLogger() const {
-    return _logger;
-  }
-
+  ASMJIT_INLINE Logger* getLogger() const { return _logger; }
   //! Set logger to `logger`.
-  ASMJIT_API Error setLogger(Logger* logger);
+  ASMJIT_INLINE void setLogger(Logger* logger) { _logger = logger; }
 #endif // !ASMJIT_DISABLE_LOGGER
 
   // --------------------------------------------------------------------------
   // [Arch]
   // --------------------------------------------------------------------------
 
-  //! Get target architecture.
-  ASMJIT_INLINE uint32_t getArch() const {
-    return _arch;
-  }
-
-  //! Get default register size (4 or 8 bytes).
-  ASMJIT_INLINE uint32_t getRegSize() const {
-    return _regSize;
-  }
+  //! Get the target architecture.
+  ASMJIT_INLINE uint32_t getArch() const { return _arch; }
+  //! Get the default register size - 4 or 8 bytes, depending on `_arch`.
+  ASMJIT_INLINE uint32_t getRegSize() const { return _regSize; }
 
   // --------------------------------------------------------------------------
   // [BaseAddress]
   // --------------------------------------------------------------------------
 
   //! Get whether the code-generator has a base address.
-  //!
-  //! \sa \ref getBaseAddress()
-  ASMJIT_INLINE bool hasBaseAddress() const {
-    return _baseAddress != kNoBaseAddress;
-  }
-
+  ASMJIT_INLINE bool hasBaseAddress() const { return _baseAddress != kNoBaseAddress; }
   //! Get the base address.
-  ASMJIT_INLINE Ptr getBaseAddress() const {
-    return _baseAddress;
-  }
-
+  ASMJIT_INLINE Ptr getBaseAddress() const { return _baseAddress; }
   //! Set the base address to `baseAddress`.
-  ASMJIT_INLINE void setBaseAddress(Ptr baseAddress) {
-    _baseAddress = baseAddress;
-  }
-
+  ASMJIT_INLINE void setBaseAddress(Ptr baseAddress) { _baseAddress = baseAddress; }
   //! Reset the base address.
-  ASMJIT_INLINE void resetBaseAddress() {
-    setBaseAddress(kNoBaseAddress);
-  }
+  ASMJIT_INLINE void resetBaseAddress() { setBaseAddress(kNoBaseAddress); }
 
   // --------------------------------------------------------------------------
   // [LastError / ErrorHandler]
   // --------------------------------------------------------------------------
 
   //! Get last error code.
-  ASMJIT_INLINE Error getError() const {
-    return _error;
-  }
-
+  ASMJIT_INLINE Error getError() const { return _error; }
   //! Set last error code and propagate it through the error handler.
   ASMJIT_API Error setError(Error error, const char* message = NULL);
-
   //! Clear the last error code.
-  ASMJIT_INLINE void resetError() {
-    _error = kErrorOk;
-  }
+  ASMJIT_INLINE void resetError() { _error = kErrorOk; }
 
   //! Get error handler.
-  ASMJIT_INLINE ErrorHandler* getErrorHandler() const {
-    return _errorHandler;
-  }
-
+  ASMJIT_INLINE ErrorHandler* getErrorHandler() const { return _errorHandler; }
   //! Set error handler.
   ASMJIT_API Error setErrorHandler(ErrorHandler* handler);
-
   //! Clear error handler.
-  ASMJIT_INLINE Error resetErrorHandler() {
-    return setErrorHandler(NULL);
-  }
+  ASMJIT_INLINE Error resetErrorHandler() { return setErrorHandler(NULL); }
 
   // --------------------------------------------------------------------------
   // [Code-Generation Features]

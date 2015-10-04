@@ -9,44 +9,44 @@ Complete x86/x64 JIT and Remote Assembler for C++.
 Introduction
 ------------
 
-AsmJit is a complete JIT and remote assembler for C++ language. It can generate native code for x86 and x64 architectures and supports the whole x86/x64 instruction set - from legacy MMX to the newest AVX2. It has a type-safe API that allows C++ compiler to do a semantic checks at compile-time even before the assembled code is generated or run.
+AsmJit is a complete JIT and remote assembler for C++ language. It can generate native code for x86 and x64 architectures and supports the whole x86/x64 instruction set - from legacy MMX to the newest AVX2. It has a type-safe API that allows C++ compiler to do semantic checks at compile-time even before the assembled code is generated or run.
 
 AsmJit is not a virtual machine nor tries to be. It's a tool that can be used to encode instructions into their machine code representations and tries to make such process easy and fun. AsmJit has been used so far in software encryption, image/sound processing, emulators and as a JIT backend in virtual machines.
 
 Features
 --------
 
-  * Complete x86/x64 instruction set - MMX, SSE, AVX, BMI, XOP, FMA...,
-  * Low-level and high-level code generation,
-  * Built-in CPU detection,
-  * Virtual Memory management,
-  * Pretty logging and error handling,
-  * Small and embeddable, around 150-200kB compiled,
-  * Zero dependencies, not even STL or RTTI.
+  * Complete x86/x64 instruction set - MMX, SSEx, AVX1/2, BMI, XOP, FMA3, FMA4, and AVX-512
+  * Low-level and high-level code generation
+  * Built-in CPU detection
+  * Virtual Memory management
+  * Pretty logging and error handling
+  * Small and embeddable, around 150-200kB compiled
+  * Zero dependencies, not even STL or RTTI
 
 Supported Environments
 ----------------------
 
 ### Operating Systems
 
-  * BSDs
-  * Linux
-  * Mac
-  * Windows
+  * BSDs (not tested regularly) 
+  * Linux (tested by Travis-CI)
+  * Mac (tested by Travis-CI)
+  * Windows (tested manually)
 
 ### C++ Compilers
 
-  * BorlandC++
-  * Clang (Travis-CI)
-  * Gcc (Travis-CI)
-  * MinGW
-  * MSVC
-  * Other compilers require testing and support in `asmjit/build.h` header
+  * BorlandC++ (not tested regularly)
+  * CLang (tested by Travis-CI)
+  * GCC (tested by Travis-CI)
+  * MinGW (tested manually)
+  * MSVC (tested manually)
+  * Other compilers require some testing and support in `asmjit/build.h` header
 
 ### Backends
 
-  * X86
-  * X64
+  * X86 (tested by Travis-CI)
+  * X64 (tested by Travis-CI)
 
 Project Organization
 --------------------
@@ -54,10 +54,9 @@ Project Organization
   * `/`             - Project root
     * `src`         - Source code
       * `asmjit`    - Public header files (always include from here)
-        * `base`    - Base files, used by the AsmJit and all backends
-        * `contrib` - Contributions that extend the base functionality
-        * `test`    - Unit testing support (don't include in your project)
+        * `base`    - Base files, used by AsmJit and all backends
         * `x86`     - X86/X64 specific files, used only by X86/X64 backend
+      * `test`      - Unit and integration tests (don't embed in your project)
     * `tools`       - Tools used for configuring, documenting and generating files
 
 Code Generation Concepts
@@ -101,10 +100,8 @@ AsmJit is designed to be easy embeddable in any kind project. However, it has so
 
 ### Features
 
-  * `ASMJIT_DISABLE_COMPILER` - Disable `Compiler` completely. Use this flag if you don't use Compiler and want slimmer binary.
-
-  * `ASMJIT_DISABLE_LOGGER` - Disable `Logger` completely. Use this flag if you don't need `Logger` functionality and want slimmer binary. AsmJit compiled with or without `Logger` support is binary compatible (all classes that use Logger pointer will simply use `void*`), but the Logger interface and in general instruction dumps are not available.
-
+  * `ASMJIT_DISABLE_COMPILER` - Disable `Compiler` completely. Use this flag if you don't use Compiler and want a slimmer binary.
+  * `ASMJIT_DISABLE_LOGGER` - Disable `Logger` completely. Use this flag if you don't need `Logger` functionality and want slimmer binary. AsmJit compiled with or without `Logger` support is binary compatible (all classes that use Logger pointer will simply use `void*`), but the Logger interface and in general instruction dumps won't be available anymore.
   * `ASMJIT_DISABLE_NAMES` - Disable everything that uses strings and that causes certain strings to be stored in the resulting binary. For example when this flag is enabled instruction or error names (and related APIs) will not be available. This flag has to be disabled together with `ASMJIT_DISABLE_LOGGER`.
 
 Using AsmJit
@@ -138,7 +135,7 @@ AsmJit needs to know the prototype of the function it will generate or call. Asm
 
 Let's put all together and generate a first function that sums its two arguments and returns the result. At the end the generated function is called from a C++ code.
 
-```C++
+```c++
 #include <asmjit/asmjit.h>
 
 using namespace asmjit;
@@ -149,9 +146,9 @@ int main(int argc, char* argv[]) {
   X86Compiler c(&runtime);
 
   // Build function having two arguments and a return value of type 'int'.
-  // First type in function builder describes the return value. kFuncConvHost
-  // tells compiler to use a host calling convention.
-  c.addFunc(kFuncConvHost, FuncBuilder2<int, int, int>());
+  // First type in function builder describes the return value. kCallConvHost
+  // tells the compiler to use the host calling convention.
+  c.addFunc(FuncBuilder2<int, int, int>(kCallConvHost));
 
   // Create 32-bit variables (virtual registers) and assign some names to
   // them. Using names is purely optional and only greatly helps while
@@ -207,7 +204,7 @@ int main(int argc, char* argv[]) {
 
 The code should be self explanatory, however there are some details to be clarified.
 
-The code above generates and calls a function of `kFuncConvHost` calling convention. 32-bit architecture contains a wide range of function calling conventions that can be all used by a single program, so it's important to know which calling convention is used by your C/C++ compiler so you can call the function. However, most compilers should generate CDecl by default. In 64-bit mode there are only two calling conventions, one is specific for Windows (Win64 calling convention) and the other for Unix (AMD64 calling convention). The `kFuncConvHost` is defined to be one of CDecl, Win64 or AMD64 depending on your architecture and operating system.
+The code above generates and calls a function of `kCallConvHost` calling convention. 32-bit architecture contains a wide range of function calling conventions that can be all used by a single program, so it's important to know which calling convention is used by your C/C++ compiler so you can call the function. However, most compilers should generate CDecl by default. In 64-bit mode there are only two calling conventions, one is specific for Windows (Win64 calling convention) and the other for Unix (AMD64 calling convention). The `kCallConvHost` is defined to be one of CDecl, Win64 or AMD64 depending on your architecture and operating system.
 
 Default integer size is platform specific, virtual types `kVarTypeIntPtr` and `kVarTypeUIntPtr` can be used to make the code more portable and they should be always used when a pointer type is needed. When no type is specified AsmJit always defaults to `kVarTypeIntPtr`. The code above works with integers where the default behavior has been overidden to 32-bits. Note it's always a good practice to specify the type of the variable used. Alternative form of creating a variable is `c.newGpVar(...)`, `c.newMmVar(...)`, `c.newXmmVar` and so on...
 
@@ -217,7 +214,7 @@ The function starts with `c.addFunc()` and ends with `c.endFunc()`. It's not all
 
 Labels are essential for making jumps, function calls or to refer to a data that is embedded in the code section. Label has to be explicitly created by using `newLabel()` method of your code generator in order to be used. The following example executes a code that depends on the condition by using a `Label` and conditional jump instruction. If the first parameter is zero it returns `a + b`, otherwise `a - b`.
 
-```C++
+```c++
 #include <asmjit/asmjit.h>
 
 using namespace asmjit;
@@ -227,7 +224,7 @@ int main(int argc, char* argv[]) {
   X86Compiler c(&runtime);
 
   // This function uses 3 arguments.
-  c.addFunc(kFuncConvHost, FuncBuilder3<int, int, int, int>());
+  c.addFunc(FuncBuilder3<int, int, int, int>(kCallConvHost));
 
   // New variable 'op' added.
   X86GpVar op(c, kVarTypeInt32, "op");
@@ -288,7 +285,7 @@ X86/X64 architectures have several memory addressing modes which can be used to 
 
 In the following example various memory addressing modes are used to demonstrate how to construct and use them. It creates a function that accepts an array and two indexes which specify which elements to sum and return.
 
-```C++
+```c++
 #include <asmjit/asmjit.h>
 
 using namespace asmjit;
@@ -298,7 +295,7 @@ int main(int argc, char* argv[]) {
   X86Compiler c(&runtime);
 
   // Function returning 'int' accepting pointer and two indexes.
-  c.addFunc(kFuncConvHost, FuncBuilder3<int, const int*, intptr_t, intptr_t>());
+  c.addFunc(FuncBuilder3<int, const int*, intptr_t, intptr_t>(kCallConvHost));
 
   X86GpVar p(c, kVarTypeIntPtr, "p");
   X86GpVar aIndex(c, kVarTypeIntPtr, "aIndex");
@@ -313,7 +310,7 @@ int main(int argc, char* argv[]) {
 
   // Read 'a' by using a memory operand having base register, index register
   // and scale. Translates to 'mov a, dword ptr [p + aIndex << 2]'.
-  c.mov(a, ptr(p, aIndex, 2));
+  c.mov(a, x86::ptr(p, aIndex, 2));
 
   // Read 'b' by using a memory operand having base register only. Variables
   // 'p' and 'bIndex' are both modified.
@@ -324,7 +321,7 @@ int main(int argc, char* argv[]) {
   c.add(p, bIndex);
 
   // Read 'b'.
-  c.mov(b, ptr(p));
+  c.mov(b, x86::ptr(p));
 
   // a = a + b;
   c.add(a, b);
@@ -356,7 +353,7 @@ AsmJit uses stack automatically to spill variables if there is not enough regist
 
 In the following example a stack of 256 bytes size is allocated, filled by bytes starting from 0 to 255 and then iterated again to sum all the values.
 
-```C++
+```c++
 #include <asmjit/asmjit.h>
 
 using namespace asmjit;
@@ -366,9 +363,9 @@ int main(int argc, char* argv[]) {
   X86Compiler c(&runtime);
 
   // Function returning 'int' without any arguments.
-  c.addFunc(kFuncConvHost, FuncBuilder0<int>());
+  c.addFunc(FuncBuilder0<int>(kCallConvHost));
 
-  // Allocate a function stack of size 256 aligned to 4 bytes.
+  // Allocate 256 bytes on the stack aligned to 4 bytes.
   X86Mem stack = c.newStack(256, 4);
 
   X86GpVar p(c, kVarTypeIntPtr, "p");
@@ -453,7 +450,7 @@ Loggers can be assigned to any code generator and there is no restriction of ass
 
 The following snippet describes how to log into `FILE*`:
 
-```C++
+```c++
 // Create logger logging to `stdout`. Logger life-time should always be
 // greater than lifetime of the code generator.
 FileLogger logger(stdout);
@@ -467,7 +464,7 @@ c.setLogger(&logger);
 
 The following snippet describes how to log into a string:
 
-```C++
+```c++
 StringLogger logger;
 
 // Create a code generator and assign our logger into it.
@@ -496,22 +493,22 @@ Code injection was one of key concepts of Compiler from the beginning. Compiler 
 
 To manipulate the current cursor use Compiler's `getCursor()` and `setCursor()` methods. The following snippet demonstrates the proper way of code injection.
 
-```C++
+```c++
 X86Compiler c(...);
 
 X86GpVar a(c, kVarTypeInt32, "a");
 X86GpVar b(c, kVarTypeInt32, "b");
 
-Node* here = c.getCursor();
+ASNode* here = c.getCursor();
 c.mov(b, 2);
 
 // Now, 'here' can be used to inject something before 'mov b, 2'. To inject
 // anything it's good to remember the current cursor so it can be set back
 // after the injecting is done. When setCursor() is called it returns the old
 // cursor.
-Node* oldCursor = c.setCursor(here);
+ASNode* prev = c.setCursor(here);
 c.mov(a, 1);
-c.setCursor(oldCursor);
+c.setCursor(prev);
 ```
 
 The resulting code would look like:
